@@ -16,12 +16,27 @@ def dictionary_bruteforce(args):
     cracked_passwords = {}
     target_hash_set = set(target_hashes) # set lookup
 
+    zero_suffixes = ["0", "00", "000", "0000", "00000","000000"]
+    max_suffixes = 100000
+
     for first_word in subset_words:
 
-        #test single word
+        #test single word, zero suffix, numerical suffix
         single_word_hash = sha1_hash(first_word)
         if single_word_hash in target_hash_set:
             cracked_passwords[single_word_hash] = first_word
+
+        for zeros in zero_suffixes:
+            combination = first_word + zeros
+            combination_hash = sha1_hash(combination)
+            if combination_hash in target_hash_set:
+                cracked_passwords[combination_hash] = combination
+
+        for num in range(max_suffixes):
+            combination = f"{first_word}{num}"
+            combination_hash = sha1_hash(combination)
+            if combination_hash in target_hash_set:
+                cracked_passwords[combination_hash] = combination
 
         #test two word combo in subset
         for second_word in subset_words:
@@ -38,6 +53,20 @@ def dictionary_bruteforce(args):
                 if three_word_hash in target_hash_set:
                     cracked_passwords[three_word_hash] = three_word
 
+        #test two word combo and numerical value / zeros
+        for second_word in all_words:
+            for d in range(10):
+                combination = f"{first_word}{second_word}{d}"
+                combination_hash = sha1_hash(combination)
+                if combination_hash in target_hash_set:
+                    cracked_passwords[combination_hash] = combination
+
+            for zeros in zero_suffixes:
+                combination = f"{first_word}{second_word}{zeros}"
+                combination_hash = sha1_hash(combination)
+                if combination_hash in target_hash_set:
+                    cracked_passwords[combination_hash] = combination
+
     return cracked_passwords
 
 def numeric_bruteforce(args):
@@ -45,7 +74,7 @@ def numeric_bruteforce(args):
     cracked_passwords = {}
     target_hash_set = set(target_hashes)
 
-    zero_padding = ["0", "00", "000", "0000", "00000", "000000", "0000000", "00000000",]
+    zero_padding = ["0", "00", "000", "0000", "00000", "000000"]
 
     for zeros in zero_padding:
         hash_value = sha1_hash(zeros)
@@ -53,10 +82,10 @@ def numeric_bruteforce(args):
             cracked_passwords[hash_value] = zeros
 
     for number in range(int(range_start), int(range_end)):
-        candidate = str(number)
-        hash_value = sha1_hash(candidate)
+        combination = str(number)
+        hash_value = sha1_hash(combination)
         if hash_value in target_hash_set:
-            cracked_passwords[hash_value] = candidate
+            cracked_passwords[hash_value] = combination
 
     return cracked_passwords
 
