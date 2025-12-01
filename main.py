@@ -10,7 +10,7 @@ def load_lines(file_path):
 def sha1_hash(text):
     return hashlib.sha1(text.encode()).hexdigest()
 
-#worker function
+#worker functions
 def dictionary_bruteforce(args):
     subset_words, all_words, target_hashes = args
     cracked_passwords = {}
@@ -40,6 +40,26 @@ def dictionary_bruteforce(args):
 
     return cracked_passwords
 
+def numeric_bruteforce(args):
+    range_start, range_end, target_hashes = args
+    cracked_passwords = {}
+    target_hash_set = set(target_hashes)
+
+    zero_padding = ["0", "00", "000", "0000", "00000", "000000", "0000000", "00000000",]
+
+    for zeros in zero_padding:
+        hash_value = sha1_hash(zeros)
+        if hash_value in target_hash_set:
+            cracked_passwords[hash_value] = zeros
+
+    for number in range(int(range_start), int(range_end)):
+        candidate = str(number)
+        hash_value = sha1_hash(candidate)
+        if hash_value in target_hash_set:
+            cracked_passwords[hash_value] = candidate
+
+    return cracked_passwords
+
 def main():
     start_time = time.time()
 
@@ -52,19 +72,37 @@ def main():
     }
 
     target_hash_list = list(hash_to_user_id.keys())
+
     #multiprocess setup
     num_processes = cpu_count()
+
     #split dictionary
     subset_size = math.ceil(len(dictionary_words) / num_processes)
     dictionary_chunks = [dictionary_words[i:i + subset_size] for i in range(0, len(dictionary_words), subset_size)]
 
-    worker_args = [(chunk, dictionary_words, target_hash_list) for chunk in dictionary_chunks]
+    dict_worker_args = [(chunk, dictionary_words, target_hash_list) for chunk in dictionary_chunks]
+
+    #numeric ranges
+    max_numeric_value = 1_000_000_000
+    numeric_block_size = max_numeric_value // num_processes
+
+    numeric_ranges = [(i * numeric_block_size, (i + 1) * numeric_block_size) for i in range(num_processes)]
+    numeric_ranges[-1] = (numeric_ranges[-1][0], max_numeric_value)
+
+    numeric_worker_args = [(start, end, target_hash_list)for (start, end) in numeric_ranges]
+
+    #dict + numeric in parallel
     with Pool(processes=num_processes) as pool:
-        results = pool.map(dictionary_bruteforce, worker_args)
+        dict_results = pool.map(dictionary_bruteforce, dict_worker_args)
+        numeric_results = pool.map(numeric_bruteforce, numeric_worker_args)
+
     #merge returns from workers
     cracked_results = {}
-    for partial_dictionary in results:
-        cracked_results.update(partial_dictionary)
+    for partial in dict_results:
+        cracked_results.update(partial)
+
+    for partial in numeric_results:
+        cracked_results.update(partial)
 
     #hash -> plaintext
     for cracked_hash, cracked_password in cracked_results.items():
