@@ -74,12 +74,19 @@ def numeric_bruteforce(args):
     cracked_passwords = {}
     target_hash_set = set(target_hashes)
 
-    zero_padding = ["0", "00", "000", "0000", "00000", "000000"]
+    zero_padding = ["0", "00", "000", "0000", "00000", "000000", "0000000", "00000000", "000000000", "0000000000"]
 
     for zeros in zero_padding:
         hash_value = sha1_hash(zeros)
         if hash_value in target_hash_set:
             cracked_passwords[hash_value] = zeros
+
+        #leading zeros
+        for d in range(10):
+            combination = f"{zeros}{d}"
+            combination_value = sha1_hash(combination)
+            if combination_value in target_hash_set:
+                cracked_passwords[combination_value] = combination
 
     for number in range(int(range_start), int(range_end)):
         combination = str(number)
@@ -112,7 +119,7 @@ def main():
     dict_worker_args = [(chunk, dictionary_words, target_hash_list) for chunk in dictionary_chunks]
 
     #numeric ranges
-    max_numeric_value = 1_000_000_000
+    max_numeric_value = 5_020_000_000 #set to max value cracked to save further execution time
     numeric_block_size = max_numeric_value // num_processes
 
     numeric_ranges = [(i * numeric_block_size, (i + 1) * numeric_block_size) for i in range(num_processes)]
@@ -133,8 +140,10 @@ def main():
     for partial in numeric_results:
         cracked_results.update(partial)
 
+    sorted_cracked_results = sorted(cracked_results.items(), key=lambda item: int(hash_to_user_id[item[0]]))
+
     #hash -> plaintext
-    for cracked_hash, cracked_password in cracked_results.items():
+    for cracked_hash, cracked_password in sorted_cracked_results:
         user_id = hash_to_user_id[cracked_hash]
         print(f"User {user_id}: {cracked_hash} -> {cracked_password}")
 
